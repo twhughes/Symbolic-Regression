@@ -8,13 +8,18 @@ class Node:
         self.anon_fn = None
         self.nextL = None
         self.nextR = None
+        self.string_rep = ''
 
 class EquationTree:
 
     def __init__(self):
         self.head = Node()
 
-    def print_tree(self):
+    def __str__(self):
+        return ''
+
+
+    def print_expanded_tree(self):
         def recurse(node,spacing):  
             if node.val is not None:          
                 print(spacing+node.name+'='+str(node.val))
@@ -46,7 +51,48 @@ class EquationTree:
                 else:
                     return node.val
             if node.eq_class == 'fn':
-                return node.anon_fn(get_value(node.nextL))
+                return node.anon_fn(get_value(node.nextR))
             if node.eq_class == 'op':
                 return node.anon_fn(get_value(node.nextL),get_value(node.nextR))
         return get_value(node)
+
+
+    def flatten(self):
+
+        def get_string(node):
+            if node.eq_class == 'const':
+                return node.name
+            elif node.eq_class == 'fn':
+                return node.name +'('+ get_string(node.nextR) +')'
+            else:
+                return '('+ get_string(node.nextL) +')' + node.name +'('+ get_string(node.nextR) +')'
+
+        def get_list(node):
+            if node.eq_class == 'const':
+                return [node.name]
+            elif node.eq_class == 'fn':
+                return [node.name]+['(']+ get_list(node.nextR) +[')']
+            else:
+                return ['(']+ get_list(node.nextL)+[')']+[node.name]+['(']+ get_list(node.nextR) +[')']
+
+        self.string_rep = get_string(self.head)
+        return get_list(self.head)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
