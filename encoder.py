@@ -30,4 +30,4 @@ def feature_fit(x_list,y_list,layer_sizes, activations, N_epochs=10, learning_ra
     feature_vec = neural_net.flatten_parameters()
     feature_vec.append(ampl)
     feature_vec.append(min_y)
-    return feature_vec
+    return feature_vec, J

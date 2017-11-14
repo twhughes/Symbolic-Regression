@@ -6,7 +6,7 @@ import matplotlib.pylab as plt
 from RNN import *
 from NN import *
 
-allowed = [('sin','fn',lambda x: np.sin(x)),('x','const',lambda _:True),('+','op',lambda x,y: x+y),('cos','fn',lambda x: np.cos(x)),('c','const',lambda _:True)]
+#allowed = [('sin','fn',lambda x: np.sin(x)),('x','const',lambda _:True),('+','op',lambda x,y: x+y),('cos','fn',lambda x: np.cos(x)),('c','const',lambda _:True)]
 allowed = [('sin','fn',lambda x: np.sin(x)),
            ('x','const',lambda _:True),
            ('+','op',lambda x,y: x+y),
@@ -23,12 +23,14 @@ activations = ['tanh','tanh','sigmoid']
 N_training = 100
 input_features = []
 input_trees = []
+losses = []
 for train_i in range(N_training):
     print(train_i)
     tree = generate_random_tree(allowed, depth=tree_depth)
     input_trees.append(tree)
     x_list, y_list = generate_example_list(tree,const_range,x_range,N_points)
-    phi = feature_fit(x_list,y_list,layer_sizes, activations,N_epochs=N_epochs,learning_rate=learning_rate)
+    phi,loss = feature_fit(x_list,y_list,layer_sizes, activations,N_epochs=N_epochs,learning_rate=learning_rate)
+    losses.append(loss)
     input_features.append(phi)
 
 print(input_features[4])
