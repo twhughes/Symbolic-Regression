@@ -14,13 +14,13 @@ allowed = [('sin','fn',lambda x: np.sin(x)),
 
 const_range = [-5,5]
 x_range = [-5,5]
-N_points = 100
-N_epochs = 200
+N_points = 50
+N_epochs = 100
 tree_depth = 6
 learning_rate = 1
 layer_sizes = [1,10,10,1]
 activations = ['tanh','tanh','sigmoid']
-N_training = 100
+N_training = 40
 input_features = []
 input_trees = []
 losses = []
@@ -33,5 +33,7 @@ for train_i in range(N_training):
     losses.append(loss)
     input_features.append(phi)
 
-print(input_features[4])
-input_trees[4].print_tree()
+#print(input_features[4])
+#input_trees[4].print_tree()
+
+build_LSTM_model(allowed, input_features, input_trees)
