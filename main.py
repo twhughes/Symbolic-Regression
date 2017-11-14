@@ -5,29 +5,6 @@ from encoder import *
 import matplotlib.pylab as plt
 from RNN import *
 from NN import *
-"""
-if __name__ == '__main__':
-    enc,dec,errors = train_RNNs()
-    examples = open('./data/test/*')
-    avg_error = 0.0
-    for eq in examples:
-        phi = generate_feature_vector(eq,N_points)
-        eq_guess, error = dec(phi)
-        avg_error += error/len(examples)
-    errors['test'] = avg_error
-
-    print('train error : '+str(errors['train']))
-    print('dev error   : '+str(errors['dev']))
-    print('test error  : '+str(errors['test']))
-
-if __name__ == '__main__':
-    eq = input('please enter equation')
-    phi = generate_feature_vector(eq,N_points)
-    eq_guess, error = dec(phi)
-    print('we guessed your equation to be '+str(eq_guess)+' with an error of: '+str(error))
-"""
-
-
 
 allowed = [('sin','fn',lambda x: np.sin(x)),('x','const',lambda _:True),('+','op',lambda x,y: x+y),('cos','fn',lambda x: np.cos(x)),('c','const',lambda _:True)]
 allowed = [('sin','fn',lambda x: np.sin(x)),
