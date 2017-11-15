@@ -2,8 +2,7 @@
 # Symbolic Regression
 
 ## Explanatory Diagram
-
-![Training](Symbolic-Regression/images/diagram.png)
+![Training](./images/diagram.png?raw=true "Diagram")
 
 ## To Do
 
@@ -18,5 +17,3 @@
 - Additional features:
   - variable input size / buffering for max equation length
   - more organized display on run time
-  
-
