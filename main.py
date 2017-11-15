@@ -22,11 +22,11 @@ const_range = [-5,5]
 x_range = [-5,5]
 N_points = 50
 N_epochs = 100
-tree_depth = 5
+tree_depth = 10
 learning_rate = 1
 layer_sizes = [1,2,2,1]
 activations = ['tanh','tanh','sigmoid']
-N_training = 200
+N_training = 1200
 perc_val = 0.3
 N_training_val = int(N_training*perc_val)
 
@@ -70,7 +70,7 @@ print "Outputs: {}".format(model.output_shape)
 print "Actual input: {}".format(inputs.shape)
 print "Actual output: {}".format(outputs.shape)
 model.compile(Adam(lr=0.001),loss='mean_squared_error', metrics=['accuracy'])
-history = model.fit(np.array(inputs),np.array(outputs),batch_size=N_training,epochs=400,shuffle=True,verbose=2)
+history = model.fit(np.array(inputs),np.array(outputs),batch_size=N_training,epochs=400,shuffle=True,verbose=1)
 
 fig, ax1 = plt.subplots()
 ax1.plot(history.history['acc'], 'b-')
@@ -96,15 +96,15 @@ print(inputs2.shape)
 print(outputs2.shape)
 
 predictions = model.predict(inputs2, batch_size=N_training, verbose=1)
+predictions_binary = np.zeros((predictions.shape))
+for i in range(predictions.shape[0]):
+    for j in range(predictions.shape[1]):
+        max_element = predictions[i,j,:].argmax()
+        predictions_binary[i,j,max_element] = 1
+
 print(input_trees2[0].string_rep)
-print(predictions[0,:,:])
-print(outputs[0,:,:])
-
-
-
-
-
-
+print(predictions_binary[0,:,:])
+print(outputs2[0,:,:])
 
 
 
