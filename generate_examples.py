@@ -86,3 +86,46 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
     return input_features, input_vectors, input_trees, losses
 
 
+def process_IO_for_keras(input_features,input_vectors,N_training,allowed):
+    L_feature = len(input_features[0])
+    L_max_eq = max([a.shape[1] for a in input_vectors])
+    L_eq_identifier = len(allowed)+2
+
+    resized_input_vectors = []
+    for a in input_vectors:
+        num_needed = L_max_eq-a.shape[1]
+        if num_needed > 0:
+            new_array = np.zeros((L_eq_identifier,num_needed))
+            resized_input_vectors.append((np.concatenate((a,new_array),axis=1)))
+        else:
+            resized_input_vectors.append(a)
+
+    inputs = []
+    for i in range(N_training):
+        phi = np.reshape(np.array(input_features[i]),(L_feature,1))
+        one_hots = resized_input_vectors[i]
+        extra_needed = L_feature-L_eq_identifier
+        padding = np.zeros((extra_needed,one_hots.shape[1]))
+        one_hots = np.concatenate((one_hots,padding),axis=0) 
+        inputs.append(np.concatenate((phi,one_hots),axis=1).T)
+    #inputs is a list of numpy arrays, [input dimension x number in sequence]
+    input_x = L_max_eq+1       # input size dimension
+    input_y = L_feature    # number in sequence
+
+    outputs = []
+    for i in range(N_training):
+        input_array = inputs[i]
+        output_array = np.zeros((input_x,input_y))
+        output_array[:-1,:] = input_array[1:,:]
+        outputs.append(output_array)
+
+    return np.array(inputs),np.array(outputs)
+
+
+
+
+
+
+
+
+
