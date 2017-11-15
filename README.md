@@ -3,4 +3,4 @@
 
 ## Explanatory Diagram
 
-![Training](https://github.com/twhughes/Symbolic-Regression/images/diagram.png)
+![Training](./images/diagram.png?raw=true "Diagram")
