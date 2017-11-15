@@ -103,6 +103,7 @@ def process_IO_for_keras(input_features,input_vectors,N_training,allowed):
     inputs = []
     for i in range(N_training):
         phi = np.reshape(np.array(input_features[i]),(L_feature,1))
+        #phi = np.zeros((L_feature,1))
         one_hots = resized_input_vectors[i]
         extra_needed = L_feature-L_eq_identifier
         padding = np.zeros((extra_needed,one_hots.shape[1]))
