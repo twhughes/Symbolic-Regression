@@ -3,6 +3,7 @@ from numpy.random import randint, random
 from equation_tree import *
 from NN import *
 from encoder import *
+
 def generate_random_tree(allowed, depth=3):
     # generates a random equation tree to some depth
     constants = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'const']
@@ -41,7 +42,7 @@ def generate_random_tree(allowed, depth=3):
 def generate_example_list(tree,const_range,x_range,N_points):
     tree.fix_constants(const_range)
     N_points = 100
-    x_list = x_range[0]+(x_range[1]-x_range[0])*random(N_points)
+    x_list = np.linspace(x_range[0],x_range[1],N_points)
     y_list = []
     for i in range(N_points):
         y_list.append(tree.evaluate(x_list[i]))
@@ -69,6 +70,7 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
     input_trees = []
     input_vectors = []
     losses = []
+    y_points = []
     index_map = create_index_map(allowed)
     for train_i in range(N_training):
         tree = generate_random_tree(allowed, depth=tree_depth)
@@ -82,8 +84,9 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
             print(train_i,loss)
         losses.append(loss)
         input_features.append(phi)
-
-    return input_features, input_vectors, input_trees, losses
+        y_points.append(y_list)
+        
+    return input_features, input_vectors, input_trees, losses, y_points
 
 
 def process_IO_for_keras(input_features,input_vectors,N_training,allowed):
