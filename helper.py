@@ -26,11 +26,10 @@ def read_equation_data(y_val_path,encoded_path):
     for y in y_values_tmp:
         y_values.append([float(_) for _ in y])
 
-    return y_values, feature_vectors  
+    return y_values, feature_vectors 
 
 def extract_vocab(data):
-    special_words = ['<pad>', '<unk>', '<s>',  '<\s>']
-
+    
     set_words = set([word for line in data.split('\n') for word in line.split()])
     int_to_vocab = {word_i: word for word_i, word in enumerate(special_words + list(set_words))}
     vocab_to_int = {word: word_i for word_i, word in int_to_vocab.items()}

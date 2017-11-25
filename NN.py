@@ -1,6 +1,7 @@
 import numpy as np
 
 # activation function dictionary
+# relu and linear don't work as expected, stick to tanh and sigmoid
 possible_activations = {
     'tanh'    : lambda z : np.tanh(z),
     'relu'    : lambda z : np.maximum(z,0),
@@ -102,7 +103,7 @@ class NN:
             self.biases[ 'b'+str(l)] = self.biases[ 'b'+str(l)] + learning_rate*self.grads['db'+str(l)]
 
     def derivative_check(self, m=5, epsilon=1e-4, verbose=False):
-        # numerical derivative checking method:
+        # numerical derivative checking method: use to make sure it is working correctly
         #   INPUTS:
         #     m       = integer, number of training examples to simulate
         #     epsilon = float,   amount to perturb weights
@@ -145,6 +146,7 @@ class NN:
         return correct
 
     def flatten_parameters(self):
+        # gets all of the parameters in the network, stick them into a vector and return them (this is our feature vector)
         feature_vec = []
         for l in range(1,self.N_layers):
             W_array = self.weights['W'+str(l)]

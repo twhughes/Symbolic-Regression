@@ -2,6 +2,8 @@ from NN import NN
 import numpy as np
 
 def normalize_ys(y_list):
+    # normalize all of the y values between 0 and 1 (because this is how the NN likes it with the sigmoid)
+    # remember the aplitude and offset, add these to the feature vector
     min_y = min(y_list)
     y_list = [y-min_y for y in y_list]
     ampl = max(y_list, key=abs)
@@ -10,6 +12,7 @@ def normalize_ys(y_list):
 
 
 def feature_fit(x_list,y_list,layer_sizes, activations, N_epochs=10, learning_rate = 1.0, threshold = 1e-3):
+    # given x,y pairs, construct the neural network, fit the data, and return the feature vector, including the normalization parameters    
     N = len(x_list)
     y_norm, ampl, min_y = normalize_ys(y_list)
     y_norm = np.array(y_norm)

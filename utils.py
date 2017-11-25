@@ -1,6 +1,7 @@
 
-
 def allowed_to_dict(allowed):
+    # maybe redundant function, just takes the allowed dictionary and creates a dictionary of indeces (including parentheses) for one hot
+    # also makes reverse dictionary, which could be useful in training the RNN
     dictionary = {}
     dictionary['('] = 1
     dictionary[')'] = 2
