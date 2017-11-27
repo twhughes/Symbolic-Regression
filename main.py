@@ -19,11 +19,11 @@ const_range = [-5,5]             # when determining constants, sample randomly i
 x_range = [-5,5]                 # when sampling x points, sample randomly in this range
 N_points = 50                    # number of x,y pairs to generate in training examples
 N_epochs = 100                   # number of training epochs for neural network fitting of x,y pairs
-tree_depth = 3                  # max equation tree depth (depth of 0 is x,c by default, depth of 1 could be sin(x), cos(c), c, etc.)
+tree_depth = 5                 # max equation tree depth (depth of 0 is x,c by default, depth of 1 could be sin(x), cos(c), c, etc.)
 learning_rate = 1                # neural network learning rate
 layer_sizes = [1,10,10,10,1]     # layer sizes in neural network, first must be 1, last must be 1, middle layers can change size or add more
 activations = ['tanh','tanh','tanh','sigmoid']  # NN activations, list must be 1 less in length than above layer sizes.  Stick to pattern of tanh, tanh, ... tanh, sigmoid
-N_training = 200                # number of training steps for the NN fit.
+N_training = 2000                # number of training steps for the NN fit.
 
 print('generating %s generate_training_examples up to tree depth of %s...'%(N_training,tree_depth))
 # this generates random equations, randomly sets constants, generates the x,y pairs, fits them to neural network and returns feature vectors
