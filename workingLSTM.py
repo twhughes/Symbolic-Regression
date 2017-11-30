@@ -3,11 +3,12 @@ import tensorflow as tf
 import sys
 
 # set up training data
-feature_vector_arr = [[1,0],
-                      [0,1]]
+feature_vector_arr = [[1,0,2,3,4,2,5],
+                      [0,1,7,3,2,3,4]]
 
 equation_strings_arr = [['sin','(','x','+','c',')','<eoe>'],
-                        ['cos','(','x','+','c',')','<eoe>']]     # correct equation labels
+                        ['cos','x',')',')','+','c','<eoe>']]
+#                        ['cos','(','x',')','<eoe>','<eoe>','<eoe>']]
 #feature_vector_arr = [[1,0]]             # single input to LSTM
 #equation_strings_arr = [['sin','(','x','+','c',')']]     # correct equation labels
 
@@ -25,9 +26,12 @@ def get_one_hot(eq_string):
     one_hot_list = []
     for i in range(N_steps):
         one_hot = np.zeros((N_vocab,1))
-        if len(eq_string) >= i:
+        if i < len(eq_string):
             s = eq_string[i]
             one_hot[eq_dict[s],0] = 1
+        else:
+            s = '<eoe>'
+            one_hot[eq_dict[s],0] = 1            
         one_hot_list.append(one_hot)
     return one_hot_list
 
@@ -64,9 +68,10 @@ def predict(feature, lstm_cell):
     # apply softmax and get max entry
 #    out = tf.sigmoid(out)    
     out = tf.nn.softmax(out,dim=0)
-    predict1 = tf.argmax(out)
-    out_list = [out]
+    predict = tf.argmax(out)
+    out_list = [out]    
     for i in range(N_steps-1):
+
         in_state = tf.add(tf.matmul(Wi,out),bi)
         in_state = tf.reshape(in_state,[1,LSTM_size])
         out, state = tf.contrib.rnn.static_rnn(lstm_cell,[in_state], dtype=tf.float32)
@@ -88,16 +93,9 @@ def one_hot_to_eq_str(one_hot_list):
         prediction = np.argmax(one_hot_list[i])
         eq_el = reverse_dict[prediction]
         equation += eq_el
-        if eq_el == '<eoe>':
-            return equation
     return equation
 
 loss = tf.constant(0.0)
-#for i in range(N_train):    
-#    out_list = predict(feature, lstm_cell)
-#    true_out = np.array(get_one_hot(equation_strings_arr[i]))
-#    loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,true_out)))
-
 out_list = tf.reshape(predict(feature, lstm_cell),[1,N_steps,N_vocab])
 loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,target)))
 
@@ -129,6 +127,7 @@ with tf.Session() as sess:
 
     test_prediction(0)
     test_prediction(1)
+
     #p = sess.run(out_list,feed_dict={feature:features[1]})   
     #print(p) 
     #print(one_hot_to_eq_str(p))
