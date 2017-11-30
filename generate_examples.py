@@ -1,165 +1,53 @@
 import numpy as np
-from numpy.random import randint, random
-from equation_tree import *
-from NN import *
-from encoder import *
+import csv
 
-def generate_random_tree(allowed, depth=3):
-    # generates a random equation tree to some depth
+from generate_examples_helper import generate_training_examples
 
-    # separate allowed dictionary into separate classes
-    constants = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'const']
-    functions = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'fn']
-    operators = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'op']
-
-    def get_constant():
-        # returns a random constant
-        return constants[randint(len(constants))]
-
-    def get_obj():
-        # returns a random equation element
-        grouped = [constants, functions, operators]
-        # first samples randomly from constants, functions, and operators
-        group_pick = grouped[randint(3)]
-        # then samples randomly from this class
-        # this makes it so that adding a lot of one class does not bias the equations to have more elements from that class
-        return group_pick[randint(len(group_pick))]
-
-    # recursive function to add a layer to the equation tree based on the class
-    def add_layer(node,depth):
-        # if we're at the max depth, it must be a constant, because they have no children
-        if depth == 0:
-            (name,eq_class,anon_fn) = get_constant()
-            eq_class = 'const'
-        # otherwise, it can be anything
-        else:
-            name,eq_class,anon_fn = get_obj()
-        node.name = name
-        node.eq_class = eq_class
-        # if it's a function, add one child recursively
-        if eq_class == 'fn':
-            node.anon_fn = anon_fn
-            node.nextR = Node()
-            add_layer(node.nextR,depth-1)
-        # if it's an operator, add two children recursively            
-        elif eq_class == 'op':
-            node.anon_fn = anon_fn            
-            node.nextL = Node()
-            node.nextR = Node()            
-            add_layer(node.nextL,depth-1)
-            add_layer(node.nextR,depth-1)
-
-    # get new equation tree object and recursively add layers to tree
-    tree = EquationTree()
-    add_layer(tree.head, depth)
-    return tree
-
-def generate_example_list(tree,const_range,x_range,N_points):
-    # generates x y sampling points from an equation tree
-    # fixes the constants randomly beween range
-    tree.fix_constants(const_range)
-    N_points = 100
-    # randomly sample x and evaluate tree for y points
-    x_list = x_range[0] + random(N_points)*(x_range[1]-x_range[0])
-    y_list = []
-    for i in range(N_points):
-        y_list.append(tree.evaluate(x_list[i]))
-    return x_list, y_list
-
-def create_index_map(allowed):
-    # give a unique index to each equation element, add parentheses too
-    index_map = {allowed[i][0]:i+3 for i in range(len(allowed))}
-    index_map['('] = 1
-    index_map[')'] = 2
-    return index_map
-
-def operator_list_to_one_hot(operator_list,index_map):
-    # with a list of operators, generate one hot numpy array    
-    N = len(index_map)
-    M = len(operator_list)
-    one_hot = np.zeros((N,M))    
-    for i in range(M):
-        name = operator_list[i]
-        index = index_map[name]
-        one_hot[index-1,i] = 1
-    return one_hot
-
-def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5],x_range=[-5,5],N_points=100,
-                               layer_sizes=[1,10,10,1],activations=['tanh','tanh','sigmoid'], N_epochs=100,learning_rate=1,verbose=False):  
-    # function called by main to get all training examples at once 
-    # set up important elements                                
-    input_features = []
-    input_trees = []
-    input_vectors = []
-    losses = []
-    index_map = create_index_map(allowed)
-    seen_equations = set()
-    # loop through number of training examples desired                                
-    for train_i in range(N_training):
-        # generate a random equation and get tree
-        tree = generate_random_tree(allowed, depth=tree_depth)
-        # get the corresponding operator name list     
-        operator_list = tree.flatten()
-        # convert this to one hot representation           
-        one_hot = operator_list_to_one_hot(operator_list,index_map)
-        # generate x,y points from the equation
-        x_list, y_list = generate_example_list(tree,const_range,x_range,N_points)
-        # fit the NN to the x,y points and get the feature vector and loss        
-        phi,loss = feature_fit(x_list,y_list,layer_sizes,activations,N_epochs=N_epochs,learning_rate=learning_rate)
-        # only add if equation is unique
-        if tree.string_rep not in seen_equations:
-            seen_equations.add(tree.string_rep)
-            if verbose:
-                print(train_i,loss)
-            input_vectors.append(one_hot)
-            input_trees.append(tree)            
-            losses.append(loss)
-            input_features.append(phi)  
-    return input_features, input_vectors, input_trees, losses
+# stores the allowable function elements, 
+  # first element is the name of the function element
+  # second is the class (must be one of {'fn','op','const'} for function, operator, and constant
+  # third is lambda expression for computing the element, return True for constants
+allowed = [('sin','fn',lambda x: np.sin(x)),
+           ('x','const',lambda _:True),
+           ('+','op',lambda x,y: x+y),
+           ('*','op',lambda x,y: x*y),
+           ('tanh','fn',lambda x: np.tanh(x)),
+           ('cos','fn',lambda x: np.cos(x))]  
 
 
-def process_IO_for_keras(input_features,input_vectors,N_training,allowed):
-    # Ignore, I was using this to get data into keras but it is no longer needed.
-    L_feature = len(input_features[0])
-    L_max_eq = max([a.shape[1] for a in input_vectors])
-    L_eq_identifier = len(allowed)+2
+# parameters for fitting to the datapoints
+const_range = [-5,5]             # when determining constants, sample randomly in this range
+x_range = [-5,5]                 # when sampling x points, sample randomly in this range
+N_points = 50                    # number of x,y pairs to generate in training examples
+N_epochs = 100                   # number of training epochs for neural network fitting of x,y pairs
+tree_depth = 2                 # max equation tree depth (depth of 0 is x,c by default, depth of 1 could be sin(x), cos(c), c, etc.)
+learning_rate = 1                # neural network learning rate
+layer_sizes = [1,4,4,1]     # layer sizes in neural network, first must be 1, last must be 1, middle layers can change size or add more
+activations = ['tanh','tanh','sigmoid']  # NN activations, list must be 1 less in length than above layer sizes.  Stick to pattern of tanh, tanh, ... tanh, sigmoid
+N_training = 200                # number of training steps for the NN fit.
 
-    resized_input_vectors = []
-    for a in input_vectors:
-        num_needed = L_max_eq-a.shape[1]
-        if num_needed > 0:
-            new_array = np.zeros((L_eq_identifier,num_needed))
-            resized_input_vectors.append((np.concatenate((a,new_array),axis=1)))
-        else:
-            resized_input_vectors.append(a)
+print('generating %s training examples up to tree depth of %s...'%(N_training,tree_depth))
+# this generates random equations, randomly sets constants, generates the x,y pairs, fits them to neural network and returns feature vectors
+input_features, input_vectors, input_trees, losses = generate_training_examples(N_training,
+                                    allowed,tree_depth=tree_depth,const_range=const_range,x_range=x_range,N_points=N_points,
+                                    layer_sizes=layer_sizes,activations=activations,
+                                    N_epochs=N_epochs,learning_rate=learning_rate,verbose=False)
+# input features: list of feature vectors (flattened weights and biases from NN)
+# input vectors: list of list of one_hot vector corresponding to the equations generated.
+# input trees: list of tree structures corresponding to the equations
+# losses: list of losses for each of the NN fits (to see if the fitting was accurate enough)
+# y_list: ignore, y points corresponding to x points generated from sampling.
 
-    inputs = []
-    for i in range(N_training):
-        phi = np.reshape(np.array(input_features[i]),(L_feature,1))
-        #phi = np.zeros((L_feature,1))
-        one_hots = resized_input_vectors[i]
-        extra_needed = L_feature-L_eq_identifier
-        padding = np.zeros((extra_needed,one_hots.shape[1]))
-        one_hots = np.concatenate((one_hots,padding),axis=0) 
-        inputs.append(np.concatenate((phi,one_hots),axis=1).T)
-    #inputs is a list of numpy arrays, [input dimension x number in sequence]
-    input_x = L_max_eq+1       # input size dimension
-    input_y = L_feature    # number in sequence
-
-    outputs = []
-    for i in range(N_training):
-        input_array = inputs[i]
-        output_array = np.zeros((input_x,input_y))
-        output_array[:-1,:] = input_array[1:,:]
-        outputs.append(output_array)
-
-    return np.array(inputs),np.array(outputs)
-
-
-
-
-
-
-
-
+# write the equation strings and feature vectors to files in the data/ directory
+print('    started with %s training examples'%N_training)
+N_training = len(input_features)  # need to account for the fact that we removed duplicated training examples
+print('    have %s training examples after removing duplicates'%N_training)
+print('saving data to files...')
+g = open('data/desired_equation_components.txt', 'w')
+for i in range(N_training):
+    eq_tree = input_trees[i]
+    eq_string = eq_tree.flatten()
+    g.write(','.join(eq_string)+'\n')  # python will convert \n to os.linesep
+g.close()
+np.savetxt("data/encoded_states.txt", np.array(input_features), delimiter=",")
 

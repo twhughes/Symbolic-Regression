@@ -4,36 +4,30 @@ import sys
 
 # set up training data
 feature_vector_arr = [[1,0],
-                      [1,0],
                       [0,1]]
 
 equation_strings_arr = [['sin','(','x','+','c',')','<eoe>'],
-                        ['cos','(','x',')','<eoe>'],
-                        ['tan','(','c',')','<eoe>']]
-#                        ['cos','(','x',')','<eoe>','<eoe>','<eoe>']]
+                        ['cos','(','x','+','c',')','<eoe>']]     # correct equation labels
 #feature_vector_arr = [[1,0]]             # single input to LSTM
 #equation_strings_arr = [['sin','(','x','+','c',')']]     # correct equation labels
 
 N_feature = len(feature_vector_arr[0])
-eq_dict = {'(':0,')':1,'x':2,'c':3,'sin':4,'+':5,'cos':6,'tan':7,'<eoe>':8}  # id the equation components
+eq_dict = {'(':0,')':1,'x':2,'c':3,'sin':4,'+':5,'cos':6,'<eoe>':7}  # id the equation components
 reverse_dict = {a:b for b,a in eq_dict.iteritems()}
 
 N_vocab = len(eq_dict)
 N_train = len(equation_strings_arr)
 N_steps = max([len(e) for e in equation_strings_arr])
-LSTM_size = 43
+LSTM_size = 10
 
 # turn the equation into a one-hot representation
 def get_one_hot(eq_string):
     one_hot_list = []
     for i in range(N_steps):
         one_hot = np.zeros((N_vocab,1))
-        if i < len(eq_string):
+        if len(eq_string) >= i:
             s = eq_string[i]
             one_hot[eq_dict[s],0] = 1
-        else:
-            s = '<eoe>'
-            one_hot[eq_dict[s],0] = 1            
         one_hot_list.append(one_hot)
     return one_hot_list
 
@@ -63,25 +57,24 @@ def predict(feature, lstm_cell):
     #print(feature)
     # first output from feeding the feature vector
     feature = tf.add(tf.matmul(feature,Wf),bf)
-    out, state = tf.contrib.rnn.static_rnn(lstm_cell,[feature], dtype=tf.float32)
+    out, _ = tf.contrib.rnn.static_rnn(lstm_cell,[feature], dtype=tf.float32)
     # apply first connected layer to output
     out = tf.reshape(out,[LSTM_size,-1])
     out = tf.add(tf.matmul(Wo,out),bo)
     # apply softmax and get max entry
-    #out = tf.sigmoid(out)    
+#    out = tf.sigmoid(out)    
     out = tf.nn.softmax(out,dim=0)
-    predict = tf.argmax(out)
+    predict1 = tf.argmax(out)
     out_list = [out]
     for i in range(N_steps-1):
-
-        input_element = tf.add(tf.matmul(Wi,out),bi)
-        input_element = tf.reshape(input_element,[1,LSTM_size])
-        out, state = tf.contrib.rnn.static_rnn(lstm_cell,[input_element], initial_state=state, dtype=tf.float32)
+        in_state = tf.add(tf.matmul(Wi,out),bi)
+        in_state = tf.reshape(in_state,[1,LSTM_size])
+        out, state = tf.contrib.rnn.static_rnn(lstm_cell,[in_state], dtype=tf.float32)
         # apply first connected layer to output
         out = tf.reshape(out,[LSTM_size,-1])
         out = tf.add(tf.matmul(Wo,out),bo)
         # apply softmax and get max entry
-        #out = tf.sigmoid(out)
+ #       out = tf.sigmoid(out)
         out = tf.nn.softmax(out,dim=0)
         predict = tf.argmax(out)
         out_list.append(out)
@@ -92,12 +85,20 @@ def one_hot_to_eq_str(one_hot_list):
     N = len(one_hot_list)
     equation = ''
     for i in range(N):
+        print(one_hot_list[i].shape)
         prediction = np.argmax(one_hot_list[i])
         eq_el = reverse_dict[prediction]
         equation += eq_el
+        if eq_el == '<eoe>':
+            return equation
     return equation
 
 loss = tf.constant(0.0)
+#for i in range(N_train):    
+#    out_list = predict(feature, lstm_cell)
+#    true_out = np.array(get_one_hot(equation_strings_arr[i]))
+#    loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,true_out)))
+
 out_list = tf.reshape(predict(feature, lstm_cell),[1,N_steps,N_vocab])
 loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,target)))
 
@@ -110,6 +111,7 @@ with tf.Session() as sess:
     for i in range(N_epoch):
         epoch_loss = 0.0
         for m in range(N_train):
+
             _, loss_calc, out_list_calc = sess.run([optimizer, loss, out_list], \
                                                             feed_dict={ feature:features[m],
                                                                          target:eq_one_hot[m]})
@@ -128,8 +130,6 @@ with tf.Session() as sess:
 
     test_prediction(0)
     test_prediction(1)
-    test_prediction(2)
-
     #p = sess.run(out_list,feed_dict={feature:features[1]})   
     #print(p) 
     #print(one_hot_to_eq_str(p))

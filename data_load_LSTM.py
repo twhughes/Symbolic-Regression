@@ -1,27 +1,37 @@
 import numpy as np
 import tensorflow as tf
 import sys
+from data_loader import load_data
 
 # set up training data
-feature_vector_arr = [[1,0],
-                      [1,0],
-                      [0,1]]
+#feature_vector_arr = [[1,0],
+#                      [1,0],
+#                      [0,1]]
 
-equation_strings_arr = [['sin','(','x','+','c',')','<eoe>'],
-                        ['cos','(','x',')','<eoe>'],
-                        ['tan','(','c',')','<eoe>']]
+#equation_strings_arr = [['sin','(','x','+','c',')','<eoe>'],
+#                        ['cos','(','x',')','<eoe>'],
+#                        ['tan','(','c',')','<eoe>']]
 #                        ['cos','(','x',')','<eoe>','<eoe>','<eoe>']]
 #feature_vector_arr = [[1,0]]             # single input to LSTM
 #equation_strings_arr = [['sin','(','x','+','c',')']]     # correct equation labels
 
+fname_phi = './data/encoded_states.txt'
+fname_eq = './data/desired_equation_components.txt'
+
+feature_vector_arr, equation_strings_arr, one_hot_list, eq_dict, reverse_dict = load_data(fname_phi,fname_eq)
+
 N_feature = len(feature_vector_arr[0])
-eq_dict = {'(':0,')':1,'x':2,'c':3,'sin':4,'+':5,'cos':6,'tan':7,'<eoe>':8}  # id the equation components
-reverse_dict = {a:b for b,a in eq_dict.iteritems()}
 
 N_vocab = len(eq_dict)
 N_train = len(equation_strings_arr)
 N_steps = max([len(e) for e in equation_strings_arr])
-LSTM_size = 43
+LSTM_size = 50
+
+print('working on %s examples' % N_train)
+print('    number of equation elements : %s' % N_vocab)
+print('    maximum equation length     : %s' % N_steps)
+print('    length of feature vector    : %s' % N_feature)
+print('    size of LSTM states         : %s' % LSTM_size)
 
 # turn the equation into a one-hot representation
 def get_one_hot(eq_string):
