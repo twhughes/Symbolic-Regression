@@ -6,8 +6,8 @@ import sys
 feature_vector_arr = [[1,0,2,3,4,2,5],
                       [0,1,7,3,2,3,4]]
 
-equation_strings_arr = [['sin','(','x','+','c',')','<eoe>'],
-                        ['cos','x',')',')','+','c','<eoe>']]
+equation_strings_arr = [['sin','x','<eoe>'],
+                        ['x',')','<eoe>']]
 #                        ['cos','(','x',')','<eoe>','<eoe>','<eoe>']]
 #feature_vector_arr = [[1,0]]             # single input to LSTM
 #equation_strings_arr = [['sin','(','x','+','c',')']]     # correct equation labels
@@ -61,7 +61,7 @@ def predict(feature, lstm_cell):
     #print(feature)
     # first output from feeding the feature vector
     feature = tf.add(tf.matmul(feature,Wf),bf)
-    out, _ = tf.contrib.rnn.static_rnn(lstm_cell,[feature], dtype=tf.float32)
+    out, state = tf.contrib.rnn.static_rnn(lstm_cell,[feature], dtype=tf.float32)
     # apply first connected layer to output
     out = tf.reshape(out,[LSTM_size,-1])
     out = tf.add(tf.matmul(Wo,out),bo)
@@ -69,12 +69,12 @@ def predict(feature, lstm_cell):
 #    out = tf.sigmoid(out)    
     out = tf.nn.softmax(out,dim=0)
     predict = tf.argmax(out)
-    out_list = [out]    
+    out_list = [out]
     for i in range(N_steps-1):
 
-        in_state = tf.add(tf.matmul(Wi,out),bi)
-        in_state = tf.reshape(in_state,[1,LSTM_size])
-        out, state = tf.contrib.rnn.static_rnn(lstm_cell,[in_state], dtype=tf.float32)
+        input_element = tf.add(tf.matmul(Wi,out),bi)
+        input_element = tf.reshape(input_element,[1,LSTM_size])
+        out, state = tf.contrib.rnn.static_rnn(lstm_cell,[input_element], initial_state=state, dtype=tf.float32)
         # apply first connected layer to output
         out = tf.reshape(out,[LSTM_size,-1])
         out = tf.add(tf.matmul(Wo,out),bo)
