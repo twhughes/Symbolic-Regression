@@ -1,9 +1,9 @@
 (,x,),*,(,x,)
 x
+cosh,(,x,)
 tanh,(,x,)
 exp,(,x,)
-log,(,x,)
-cosh,(,x,)
-sin,(,x,)
 (,x,),+,(,x,)
+sin,(,x,)
+log,(,x,)
 sinh,(,x,)

@@ -1,5 +1,7 @@
 import numpy as np
 import csv
+import dill    # needed for pickling lambda expressions
+import pickle  # comes pre-installed
 
 from generate_examples_helper import generate_training_examples
 
@@ -55,4 +57,4 @@ for i in range(N_training):
     g.write(','.join(eq_string)+'\n')  # python will convert \n to os.linesep
 g.close()
 np.savetxt("data/encoded_states.txt", np.array(input_features), delimiter=",")
-
+pickle.dump(input_trees, open( "data/equation_trees.p", "wb" ) )

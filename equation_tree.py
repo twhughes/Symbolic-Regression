@@ -10,7 +10,7 @@ class Node:
         self.nextL = None      # left child (specified for operator only, None for constant and function)
         self.nextR = None      # right child (specified for operator and function, None for constant)
         self.string_rep = ''   # string represntation (unused)
-
+        
 class EquationTree:
 
     def __init__(self):
@@ -83,8 +83,6 @@ class EquationTree:
 
         self.string_rep = get_string(self.head)
         return get_list(self.head)
-
-        
 
 
 
