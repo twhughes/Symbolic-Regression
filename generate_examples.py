@@ -12,7 +12,12 @@ allowed = [('sin','fn',lambda x: np.sin(x)),
            ('+','op',lambda x,y: x+y),
            ('*','op',lambda x,y: x*y),
            ('tanh','fn',lambda x: np.tanh(x)),
-           ('cos','fn',lambda x: np.cos(x))]  
+           #('c','const',lambda _: True),
+           #('b','const',lambda _: True),
+           ('exp','fn',lambda x: np.exp(x)),
+           ('log','fn',lambda x: np.log(np.abs(x))),
+           ('cosh','fn',lambda x: np.cosh(x)),           
+           ('sinh','fn',lambda x: np.sinh(x))]  
 
 
 # parameters for fitting to the datapoints
@@ -20,7 +25,7 @@ const_range = [-5,5]             # when determining constants, sample randomly i
 x_range = [-5,5]                 # when sampling x points, sample randomly in this range
 N_points = 50                    # number of x,y pairs to generate in training examples
 N_epochs = 100                   # number of training epochs for neural network fitting of x,y pairs
-tree_depth = 2                 # max equation tree depth (depth of 0 is x,c by default, depth of 1 could be sin(x), cos(c), c, etc.)
+tree_depth = 1                 # max equation tree depth (depth of 0 is x,c by default, depth of 1 could be sin(x), cos(c), c, etc.)
 learning_rate = 1                # neural network learning rate
 layer_sizes = [1,4,4,1]     # layer sizes in neural network, first must be 1, last must be 1, middle layers can change size or add more
 activations = ['tanh','tanh','sigmoid']  # NN activations, list must be 1 less in length than above layer sizes.  Stick to pattern of tanh, tanh, ... tanh, sigmoid

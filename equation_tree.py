@@ -79,8 +79,10 @@ class EquationTree:
                 return [node.name]+['(']+ get_list(node.nextR) +[')']
             else:
                 return ['(']+ get_list(node.nextL)+[')']+[node.name]+['(']+ get_list(node.nextR) +[')']
+                #return get_list(node.nextL) + [node.name] + get_list(node.nextR)
+
         self.string_rep = get_string(self.head)
-        return ['('] + get_list(self.head) + [')']
+        return get_list(self.head)
 
         
 

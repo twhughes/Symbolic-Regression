@@ -25,7 +25,7 @@ N_feature = len(feature_vector_arr[0])
 N_vocab = len(eq_dict)
 N_train = len(equation_strings_arr)
 N_steps = max([len(e) for e in equation_strings_arr])
-LSTM_size = 50
+LSTM_size = 44
 
 print('working on %s examples' % N_train)
 print('    number of equation elements : %s' % N_vocab)
@@ -111,8 +111,8 @@ loss = tf.constant(0.0)
 out_list = tf.reshape(predict(feature, lstm_cell),[1,N_steps,N_vocab])
 loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,target)))
 
-optimizer = tf.train.RMSPropOptimizer(learning_rate=0.01).minimize(loss)
-N_epoch = 1000
+optimizer = tf.train.AdamOptimizer(learning_rate=0.005).minimize(loss)
+N_epoch = 2000
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
@@ -124,8 +124,10 @@ with tf.Session() as sess:
                                                             feed_dict={ feature:features[m],
                                                                          target:eq_one_hot[m]})
             epoch_loss += loss_calc
+        if i == 0:
+            print("first epoch_loss = %s" % epoch_loss)
         losses.append(epoch_loss)
-        sys.stdout.write("\repoch %s of %s.  loss: %s" % (i,N_epoch,epoch_loss))
+        sys.stdout.write("\r    epoch %s of %s.  loss: %s" % (i,N_epoch,epoch_loss))
         sys.stdout.flush()
 
     print("\n")
@@ -133,12 +135,17 @@ with tf.Session() as sess:
     def test_prediction(index):
         p = sess.run(out_list,feed_dict={feature:features[index]})
         eq_pred = one_hot_to_eq_str(p)
-        print("supplied feature vector for : %s" % (''.join(equation_strings_arr[index])))
-        print("predicted equation of       : %s" % (eq_pred))
+        eq_true = ''.join(equation_strings_arr[index])
+        L = len(eq_true)
+        print("supplied feature vector for : %s" % eq_true[:L])
+        print("predicted equation of       : %s" % eq_pred[:L])
+        return eq_true[:L] == eq_pred[:L]            
 
-    test_prediction(0)
-    test_prediction(1)
-    test_prediction(2)
+    matches = 0
+    for i in range(N_train):
+        matches += test_prediction(i)
+
+    print('predicted correctly on %s/%s training examples:  %s percent accuracy'%(matches,N_train,int(float(matches)/N_train*1000.0)/10.0))
 
     #p = sess.run(out_list,feed_dict={feature:features[1]})   
     #print(p) 
