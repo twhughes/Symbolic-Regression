@@ -3,6 +3,7 @@ from numpy.random import randint, random
 from equation_tree import *
 from NN import *
 from encoder import *
+import sys
 
 def generate_random_tree(allowed, depth=3):
     # generates a random equation tree to some depth
@@ -94,13 +95,17 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
     losses = []
     index_map = create_index_map(allowed)
     seen_equations = set()
+    print("")
     # loop through number of training examples desired                                
     for train_i in range(N_training):
         # generate a random equation and get tree
         tree = generate_random_tree(allowed, depth=tree_depth)
         # get the corresponding operator name list     
         operator_list = tree.flatten()
-        # convert this to one hot representation           
+        # convert this to one hot representation   
+        eq_string = ''.join(operator_list)
+        sys.stdout.write("\rgenerating tree for equation: %s " % (eq_string))
+        sys.stdout.flush()            
         one_hot = operator_list_to_one_hot(operator_list,index_map)
         # generate x,y points from the equation
         x_list, y_list = generate_example_list(tree,const_range,x_range,N_points)

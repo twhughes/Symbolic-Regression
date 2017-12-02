@@ -109,7 +109,7 @@ def one_hot_to_eq_str(one_hot_list):
 
 loss = tf.constant(0.0)
 out_list = tf.reshape(predict(feature, lstm_cell),[1,N_steps,N_vocab])
-loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,target)))
+loss = loss + tf.reduce_sum(tf.square(tf.abs(tf.subtract(out_list,target))))
 
 optimizer = tf.train.AdamOptimizer(learning_rate=0.005).minimize(loss)
 N_epoch = 2000

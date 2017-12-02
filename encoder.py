@@ -1,15 +1,24 @@
 from NN import NN
 import numpy as np
 
+EPSILON = 1e-3
+
 def normalize_ys(y_list):
     # normalize all of the y values between 0 and 1 (because this is how the NN likes it with the sigmoid)
     # remember the aplitude and offset, add these to the feature vector
     min_y = min(y_list)
     y_list = [y-min_y for y in y_list]
     ampl = max(y_list, key=abs)
-    y_norm = [y/ampl for y in y_list]
+    y_norm = []    
+    for y in y_list:
+        # NOTE: for constants, ampl = 0 and y = 0 after subtracting min.
+        # Therefore, need some way to deal with 0/0 terms
+        # set so that if they are less than epsilon, just take as 0/0 = 1
+        if abs(y) < EPSILON and ampl < EPSILON:
+            y_norm.append(1)
+        else:
+            y_norm.append(y/ampl)
     return y_norm, ampl, min_y
-
 
 def feature_fit(x_list,y_list,layer_sizes, activations, N_epochs=10, learning_rate = 1.0, threshold = 1e-3):
     # given x,y pairs, construct the neural network, fit the data, and return the feature vector, including the normalization parameters    
