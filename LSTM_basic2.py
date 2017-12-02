@@ -85,7 +85,6 @@ def one_hot_to_eq_str(one_hot_list):
     N = len(one_hot_list)
     equation = ''
     for i in range(N):
-        print(one_hot_list[i].shape)
         prediction = np.argmax(one_hot_list[i])
         eq_el = reverse_dict[prediction]
         equation += eq_el

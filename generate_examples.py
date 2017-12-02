@@ -10,14 +10,15 @@ from generate_examples_helper import generate_training_examples
   # second is the class (must be one of {'fn','op','const'} for function, operator, and constant
   # third is lambda expression for computing the element, return True for constants
 allowed = [('sin','fn',lambda x: np.sin(x)),
+           ('cos','fn',lambda x: np.cos(x)),           
            ('x','const',lambda _:True),
            ('+','op',lambda x,y: x+y),
            ('*','op',lambda x,y: x*y),
-           ('tanh','fn',lambda x: np.tanh(x)),
+           ('tanh','fn',lambda x: np.tanh(x))]
            #('c','const',lambda _: True),
            #('b','const',lambda _: True),
-           #('log','fn',lambda x: np.log(np.abs(x))),
-           ('cosh','fn',lambda x: np.cosh(x))]
+           #('log','fn',lambda x: np.log(np.abs(x)))]
+           #('cosh','fn',lambda x: np.cosh(x))]
 
 # parameters for fitting to the datapoints
 const_range = [-5,5]             # when determining constants, sample randomly in this range
