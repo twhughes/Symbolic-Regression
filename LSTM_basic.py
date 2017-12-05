@@ -6,8 +6,8 @@ import sys
 feature_vector_arr = [[1,0],
                       [0,1]]
 
-equation_strings_arr = [['sin','(','x','+','c',')','<eoe>'],
-                        ['cos','(','x','+','c',')','<eoe>']]     # correct equation labels
+equation_strings_arr = [['sin','(','x',')','<eoe>'],
+                        ['x','+','c','<eoe>']]     # correct equation labels
 #feature_vector_arr = [[1,0]]             # single input to LSTM
 #equation_strings_arr = [['sin','(','x','+','c',')']]     # correct equation labels
 
@@ -25,7 +25,7 @@ def get_one_hot(eq_string):
     one_hot_list = []
     for i in range(N_steps):
         one_hot = np.zeros((N_vocab,1))
-        if len(eq_string) >= i:
+        if len(eq_string) > i:
             s = eq_string[i]
             one_hot[eq_dict[s],0] = 1
         one_hot_list.append(one_hot)
@@ -129,6 +129,12 @@ with tf.Session() as sess:
 
     test_prediction(0)
     test_prediction(1)
+
+    p = sess.run(out_list,feed_dict={feature:np.array([[1,1]])})
+    eq_pred = one_hot_to_eq_str(p)
+    #print("supplied feature vector for : %s" % (''.join(equation_strings_arr[index])))
+    print("predicted equation of       : %s" % (eq_pred))  
+      
     #p = sess.run(out_list,feed_dict={feature:features[1]})   
     #print(p) 
     #print(one_hot_to_eq_str(p))

@@ -86,7 +86,7 @@ def operator_list_to_one_hot(operator_list,index_map):
     return one_hot
 
 def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5],x_range=[-5,5],N_points=100,
-                               layer_sizes=[1,10,10,1],activations=['tanh','tanh','sigmoid'], N_epochs=100,learning_rate=1,verbose=False):  
+                               layer_sizes=[1,10,10,1],activations=['tanh','tanh','sigmoid'], N_epochs=100,learning_rate=1,verbose=False,uniquify=True,lambda_reg=0.0):  
     # function called by main to get all training examples at once 
     # set up important elements                                
     input_features = []
@@ -110,16 +110,25 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
         # generate x,y points from the equation
         x_list, y_list = generate_example_list(tree,const_range,x_range,N_points)
         # fit the NN to the x,y points and get the feature vector and loss        
-        phi,loss = feature_fit(x_list,y_list,layer_sizes,activations,N_epochs=N_epochs,learning_rate=learning_rate)
+        phi,loss = feature_fit(x_list,y_list,layer_sizes,activations,N_epochs=N_epochs,learning_rate=learning_rate,lambda_reg=lambda_reg)
         # only add if equation is unique
-        if tree.string_rep not in seen_equations:
+        if uniquify:
+            if tree.string_rep not in seen_equations:
+                seen_equations.add(tree.string_rep)
+                if verbose:
+                    print(train_i,loss)
+                input_vectors.append(one_hot)
+                input_trees.append(tree)            
+                losses.append(loss)
+                input_features.append(phi)
+        else:
             seen_equations.add(tree.string_rep)
             if verbose:
                 print(train_i,loss)
             input_vectors.append(one_hot)
             input_trees.append(tree)            
             losses.append(loss)
-            input_features.append(phi)  
+            input_features.append(phi)            
     return input_features, input_vectors, input_trees, losses
 
 

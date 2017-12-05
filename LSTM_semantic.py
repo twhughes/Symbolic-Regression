@@ -9,12 +9,23 @@ fname_eq = './data/desired_equation_components.txt'
 
 feature_vector_arr, equation_strings_arr, one_hot_list, eq_dict, reverse_dict = load_data(fname_phi,fname_eq)
 
-N_feature = len(feature_vector_arr[0])
+#========Separating training and testing data========
+feature_vector_full = feature_vector_arr
+equation_strings_full = equation_strings_arr
+train_ratio = 0.7
+N_total = len(feature_vector_arr)
+feature_vector_test = feature_vector_arr[int(N_total*train_ratio):N_total]
+equation_strings_test = equation_strings_arr[int(N_total*train_ratio):N_total]
+feature_vector_train = feature_vector_arr[0:int(N_total*train_ratio)]
+equation_strings_train = equation_strings_arr[0:int(N_total*train_ratio)]
+#====================================================
+
+N_feature = len(feature_vector_train[0])
 
 N_vocab = len(eq_dict)
-N_train = len(equation_strings_arr)
-N_steps = max([len(e) for e in equation_strings_arr])
-LSTM_size = 40
+N_train = len(equation_strings_train)
+N_steps = max([len(e) for e in equation_strings_train])
+LSTM_size = 20
 
 print('working on %s examples' % N_train)
 print('    number of equation elements : %s' % N_vocab)
@@ -38,8 +49,8 @@ def get_one_hot(eq_string):
 
 
 # turn the equation into a one-hot representation and reshape for TF
-features = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_arr]
-eq_one_hot = [np.reshape(np.array(get_one_hot(e)),(1,N_steps,N_vocab)) for e in equation_strings_arr]
+features = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_train]
+eq_one_hot = [np.reshape(np.array(get_one_hot(e)),(1,N_steps,N_vocab)) for e in equation_strings_train]
 
 # input to the first LSTM cell (the feature vector)
 feature = tf.placeholder(tf.float32,[1,N_feature])
@@ -69,7 +80,6 @@ def predict(feature, lstm_cell):
 
     out = tf.nn.softmax(out,dim=0)
     out_list = [out]
-    print eq_dict
     #==============
     #implemented by Siddharth for semantic dictionary
     #news = tf.InteractiveSession()
@@ -82,10 +92,14 @@ def predict(feature, lstm_cell):
 
     for i in range(N_steps-1):
 
-        input_element = tf.add(tf.matmul(Wi,out),bi)
+        in_prev = tf.reshape(target[0,i,:],[N_vocab,1])
+
+        input_element = tf.add(tf.matmul(Wi,in_prev),bi)
         input_element = tf.reshape(input_element,[1,LSTM_size])
         out, state = tf.contrib.rnn.static_rnn(lstm_cell,[input_element], initial_state=state, dtype=tf.float32)
 
+
+        out = tf.reshape(out,[LSTM_size,-1])
         out = tf.reshape(out,[LSTM_size,-1])
         out = tf.add(tf.matmul(Wo,out),bo)
         out = tf.nn.softmax(out,dim=0)
@@ -100,6 +114,31 @@ def predict(feature, lstm_cell):
         #==============
 
         out_list.append(out)
+    return out_list
+
+def predict_runtime(feature, lstm_cell):
+
+
+    feature = tf.add(tf.matmul(feature,Wf),bf)
+    out, state = tf.contrib.rnn.static_rnn(lstm_cell,[feature], dtype=tf.float32)
+
+    out = tf.reshape(out,[LSTM_size,-1])
+    out = tf.add(tf.matmul(Wo,out),bo)
+
+    out_list = [out]
+
+    for i in range(N_steps-1):
+
+        input_element = tf.add(tf.matmul(Wi,out),bi)
+        input_element = tf.reshape(input_element,[1,LSTM_size])
+        out, state = tf.contrib.rnn.static_rnn(lstm_cell,[input_element], initial_state=state, dtype=tf.float32)
+
+        out = tf.reshape(out,[LSTM_size,-1])
+        out = tf.add(tf.matmul(Wo,out),bo)
+        out = tf.nn.softmax(out,dim=0)
+
+        out_list.append(out)
+
     return out_list
 
 def check_dictOld(currentList,prevList):
@@ -137,45 +176,6 @@ def check_dictOld(currentList,prevList):
     return currentList
     #return tf.multiply(outTensor,currentList)
 
-def check_dict(currentList,prevList):
-
-    prevGuess = tf.argmax(prevList)
-    outTensor = [0.0 for j in range(N_vocab)]
-
-    if prevGuess == 3:
-        print 'Hello'
-        outTensor[eq_dict['<eoe>']] = 1
-
-    elif prevGuess == 6:
-        print 'Hello'
-        outTensor[eq_dict[')']] = 1
-        outTensor[eq_dict['+']] = 1
-        outTensor[eq_dict['*']] = 1
-        outTensor[eq_dict['<eoe>']] = 1
-
-    elif prevGuess in [4,7,8]:
-        print 'Hello'
-        outTensor[eq_dict['(']] = 1
-
-    elif prevGuess in [5,2,1]:
-        print 'Hello'
-        outTensor = [1.0 for j in range(N_vocab)]
-        outTensor[eq_dict[')']] = 0
-        outTensor[eq_dict['+']] = 0
-        outTensor[eq_dict['*']] = 0
-
-    elif prevGuess in [0,9]:
-        print 'Hello'
-        outTensor[eq_dict[')']] = 1
-        outTensor[eq_dict['+']] = 1
-        outTensor[eq_dict['*']] = 1
-
-    outTensor = tf.convert_to_tensor(outTensor)
-    outTensor = tf.reshape(outTensor,[N_vocab,1])
-    print outTensor
-    print currentList
-    return currentList
-    #return tf.multiply(outTensor,currentList)
 def one_hot_to_eq_str(one_hot_list):
     one_hot_list = one_hot_list[0]  # need to get 0th element since only one training example in practice
     N = len(one_hot_list)
@@ -198,9 +198,14 @@ gamma = 0.6*0
 loss = tf.constant(0.0)
 out_list = predict(feature, lstm_cell)
 out_list_tensor = tf.reshape(out_list,[1,N_steps,N_vocab])
+
+out_list_test = predict_runtime(feature, lstm_cell)
+out_list_tensor_test = tf.reshape(out_list_test,[1,N_steps,N_vocab])
+
 #======Mismatch loss======
 loss = loss + tf.reduce_sum(tf.square(tf.abs(tf.subtract(out_list_tensor,target))))
 #======Heuristic losses======
+'''
 A = [0 for j in range(N_vocab)]
 A[eq_dict['+']] = 1
 A[eq_dict['*']] = 1
@@ -223,10 +228,10 @@ for j in range(N_steps):
     pred = tf.reshape(out_list[j],[N_vocab,1])
     count += tf.reduce_sum(tf.matmul(X,pred))
     count -= tf.reduce_sum(tf.matmul(Y,pred))
-loss += beta*np.abs(count)
+loss += beta*np.square(count)
 
 C = [[1 for j in range(N_vocab)] for i in range(N_vocab)]
-#'''
+
 okList = {'<eoe>':['<eoe>'],'cos':['('],'sin':['('],'tanh':['('],\
 '+':['x','sin','cos','tanh'],'*':['x','sin','cos','tanh'],\
 '(':['x','cos','sin','tanh'],')':['+','*',')'],'x':['+','*',')']}
@@ -239,7 +244,7 @@ okList = {'<eoe>':['<eoe>'],'cos':['('],'sin':['('],'tanh':['('],\
 '''
 okList = {'<eoe>':['<eoe>'],'sin':['('],\
 '(':['x','sin'],')':[')'],'x':[')']}
-'''
+
 for sym in okList:
     index = eq_dict[sym]
     for ok in okList[sym]:
@@ -253,10 +258,15 @@ for j in range(1,N_steps):
     currentPred = tf.reshape(out_list[j],[N_vocab,1])
     loss += gamma*tf.reduce_sum(tf.matmul(tf.transpose(prevPred),tf.matmul(C,currentPred)))
 #=============================
-
+'''
 
 optimizer = tf.train.RMSPropOptimizer(learning_rate=0.001).minimize(loss)
-N_epoch = 1000
+N_epoch = 500
+# turn the equation into a one-hot representation and reshape for TF
+#features_full = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_full]
+features_train = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_train]
+features_test = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_test]
+eq_one_hot_train = [np.reshape(np.array(get_one_hot(e)),(1,N_steps,N_vocab)) for e in equation_strings_train]
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
@@ -265,8 +275,8 @@ with tf.Session() as sess:
         epoch_loss = 0.0
         for m in range(N_train):
             _, loss_calc, out_list_calc = sess.run([optimizer, loss, out_list_tensor], \
-                                                            feed_dict={ feature:features[m],
-                                                                         target:eq_one_hot[m]})
+                                                            feed_dict={ feature:features_train[m],
+                                                                         target:eq_one_hot_train[m]})
             epoch_loss += loss_calc
         losses.append(epoch_loss)
         sys.stdout.write("\repoch %s of %s.  loss: %s" % (i,N_epoch,epoch_loss))
@@ -274,22 +284,59 @@ with tf.Session() as sess:
 
     print("\n")
 
-    def test_prediction(index):
-        p = sess.run(out_list_tensor,feed_dict={feature:features[index]})
+    def test_prediction_train(index):
+        p = sess.run(out_list_tensor,feed_dict={feature:features_train[index], target:eq_one_hot_train[index]})
         eq_pred = one_hot_to_eq_str(p)
-        suppliedString = ''.join(equation_strings_arr[index]).replace('<eoe>','')
+        suppliedString = ''.join(equation_strings_train[index]).replace('<eoe>','')
         predictedString = eq_pred.replace('<eoe>','')
+        print '--'
         print("supplied feature vector for : %s" % (suppliedString))
         print("predicted equation of       : %s" % (predictedString))
 
         if predictedString==suppliedString:
             return 1
-        else:
-            return 0
+        #elif ('x' not in predictedString) and ('x' not in suppliedString):
+        #    return 1
+
+        return 0
+
+    def test_prediction_test(index):
+        p = sess.run(out_list_tensor_test,feed_dict={feature:features_test[index]})
+        eq_pred = one_hot_to_eq_str(p)
+        suppliedString = ''.join(equation_strings_test[index]).replace('<eoe>','')
+        predictedString = eq_pred.replace('<eoe>','')
+        print '--'
+        print("supplied feature vector for : %s" % (suppliedString))
+        print("predicted equation of       : %s" % (predictedString))
+
+        if (suppliedString == 'x') and (predictedString=='x'):
+            return (0,1)
+        if predictedString==suppliedString:
+            return (1,0)
+        #elif ('x' not in predictedString) and ('x' not in suppliedString):
+        #    return 1
+
+        return (0,0)
+
+
+    print 'Testing on test data:'
+    correctPreds = 0
+    correctPredsX = 0
+    for j in range(len(features_test)):
+        output = test_prediction_test(j)
+        correctPreds += output[0]
+        correctPredsX += output[1]
+    print 'Number of correct "x" predictions: %d' %correctPredsX
+    print 'Number of correct predictions excluding "x": %d' %correctPreds
+    print 'Total %d out of %d' %(correctPreds+correctPredsX,len(feature_vector_test))
+
+    #print ("\n")
+    #print 'Now on original training data:'
 
     correctPreds = 0
+    for j in range(len(features_train)):
+        correctPreds += test_prediction_train(j)
+    print 'Number of correct predictions on training: %d out of %d' %(correctPreds, len(feature_vector_train))
 
-    for j in range(len(features)):
-        correctPreds += test_prediction(j)
-
-    print 'Number of correct predictions: %d out of %d' %(correctPreds, N_train)
+    new_examples = [''.join(ex).replace('<eoe','') for ex in equation_strings_test if not (ex in equation_strings_train)]
+    print 'New functions were: ', new_examples
