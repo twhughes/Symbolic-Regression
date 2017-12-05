@@ -10,6 +10,7 @@ class Node:
         self.nextL = None      # left child (specified for operator only, None for constant and function)
         self.nextR = None      # right child (specified for operator and function, None for constant)
         self.string_rep = ''   # string represntation (unused)
+        self.one_hot = None    # one-hot representation
         
 class EquationTree:
 
