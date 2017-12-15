@@ -1,3 +1,12 @@
+'''
+Accelerating Symbolic Regression with Deep Learning
+By Tyler Hughes, Siddharth Buddhiraju and Rituraj
+For CS 221, Fall 2017-2018
+
+Basic equation tree class used for storing equations and
+performing basic operations on them.
+'''
+
 from numpy.random import random
 
 # implements an equation tree class
@@ -10,8 +19,7 @@ class Node:
         self.nextL = None      # left child (specified for operator only, None for constant and function)
         self.nextR = None      # right child (specified for operator and function, None for constant)
         self.string_rep = ''   # string represntation (unused)
-        self.one_hot = None    # one-hot representation
-        
+
 class EquationTree:
 
     def __init__(self):
@@ -19,13 +27,13 @@ class EquationTree:
         self.head = Node()
 
     def __str__(self):
-        # print(tree) just gives empty string (may be implemented later for printing out trees)        
+        # print(tree) just gives empty string (may be implemented later for printing out trees)
         return ''
 
     def print_expanded_tree(self):
         # recursively prints an expanded tree.  Uses indentation for structure
-        def recurse(node,spacing):  
-            if node.val is not None:          
+        def recurse(node,spacing):
+            if node.val is not None:
                 print(spacing+node.name+'='+str(node.val))
             else:
                 print(spacing+node.name)
@@ -52,10 +60,10 @@ class EquationTree:
         node = self.head
         def get_value(node):
             if node.eq_class == 'const':
+                return node.val
+            if node.eq_class == 'var':
                 if node.name == 'x':
                     return x
-                else:
-                    return node.val
             if node.eq_class == 'fn':
                 return node.anon_fn(get_value(node.nextR))
             if node.eq_class == 'op':
@@ -67,39 +75,23 @@ class EquationTree:
         # sets the string representation of the head node (tree.string_rep is equal to the equation string now)
         # returns a list of the equation elements (including parentheses) of the tree
         def get_string(node):
-            if node.eq_class == 'const':
+            if node is None:
+                return '<eoe>'
+            if node.eq_class == 'const' or node.eq_class == 'var':
                 return node.name
             elif node.eq_class == 'fn':
                 return node.name +'('+ get_string(node.nextR) +')'
             else:
                 return '('+ get_string(node.nextL) +')' + node.name +'('+ get_string(node.nextR) +')'
         def get_list(node):
-            if node.eq_class == 'const':
+            if node is None:
+                return ['<eoe>']
+            if node.eq_class == 'const' or node.eq_class == 'var':
                 return [node.name]
             elif node.eq_class == 'fn':
                 return [node.name]+['(']+ get_list(node.nextR) +[')']
             else:
-                return ['(']+ get_list(node.nextL)+[')']+[node.name]+['(']+ get_list(node.nextR) +[')']
-                #return get_list(node.nextL) + [node.name] + get_list(node.nextR)
+                return get_list(node.nextL) + [node.name] + get_list(node.nextR)
 
         self.string_rep = get_string(self.head)
         return get_list(self.head)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

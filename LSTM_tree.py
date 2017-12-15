@@ -1,3 +1,14 @@
+'''
+Accelerating Symbolic Regression with Deep Learning
+By Tyler Hughes, Siddharth Buddhiraju and Rituraj
+For CS 221, Fall 2017-2018
+
+This file reads examples generated from generate_examples.py, and trains a
+tree decoder(LSTM) to minimize L2 loss
+on the generated equation against the correct equation.
+Then, it predicts on the test dataset and returns statistics.
+'''
+
 import numpy as np
 import tensorflow as tf
 import sys
@@ -5,85 +16,49 @@ from data_loader import load_data
 import pickle 
 from equation_tree import *
 
-fname_phi = './data/encoded_states.txt'
-fname_eq = './data/desired_equation_components.txt'
-fname_trees = './data/equation_trees.p'
-fname_allowed = './data/allowed.p'
+#========Loading data from file========
+max_depth = 1
 
-feature_vector_arr, equation_strings_arr, one_hot_list, eq_dict, reverse_dict = load_data(fname_phi,fname_eq)
-equation_trees_arr = pickle.load(open( fname_trees, "rb" ))
+fname_phi = './data/encoded_states_d'+str(max_depth)+'.txt'
+fname_eq = './data/desired_equation_components_d'+str(max_depth)+'.txt'
+fname_trees = './data/equation_trees_d'+str(max_depth)+'.p'
+fname_allowed = './data/allowed_d'+str(max_depth)+'.p'
+
+feature_vector_full, equation_strings_full, one_hot_list, eq_dict, reverse_dict = load_data(fname_phi,fname_eq)
+equation_trees_full = pickle.load(open( fname_trees, "rb" ))
 allowed = pickle.load(open( fname_allowed, "rb" ))
 
 #========Separating training and testing data========
-feature_vector_full = feature_vector_arr
-equation_strings_full = equation_strings_arr
-train_ratio = 1.0
-N_total = len(feature_vector_arr)
-feature_vector_test = feature_vector_arr[int(N_total*train_ratio):N_total]
-equation_strings_test = equation_strings_arr[int(N_total*train_ratio):N_total]
-feature_vector_arr = feature_vector_arr[0:int(N_total*train_ratio)]
-equation_strings_arr = equation_strings_arr[0:int(N_total*train_ratio)]
-#====================================================
+train_ratio = 0.95
+N_total = len(feature_vector_full)
+feature_vector_train = feature_vector_full[:int(N_total*train_ratio)]
+feature_vector_test = feature_vector_full[int(N_total*train_ratio):N_total]
+equation_strings_train = equation_strings_full[:int(N_total*train_ratio)]
+equation_strings_test = equation_strings_full[int(N_total*train_ratio):N_total]
+equation_trees_train = equation_trees_full[:int(N_total*train_ratio)]
+equation_trees_test = equation_trees_full[int(N_total*train_ratio):N_total]
 
-class_dict = {name : eq_class for (name,eq_class,_) in allowed }
+#========Get rid of parentheses========
+
+class_dict = {name : eq_class for (name,eq_class,_) in allowed if name != ')' and name != '('}
+
+del eq_dict[')']
+del eq_dict['(']
+def rename_eq_dict(eq_dict):
+    index = 0
+    eq_dict_new = {}
+    for e in eq_dict.keys():
+        eq_dict_new[e] = index
+        index += 1
+    return eq_dict_new
+eq_dict = rename_eq_dict(eq_dict)
+
+reverse_dict = {index : name for name,index in eq_dict.iteritems()}
 class_dict['<eoe>'] = 'const'   #HACK
 
-N_feature = len(feature_vector_arr[0])
-N_vocab = len(eq_dict)
-N_train = len(equation_strings_arr)
-N_steps = max([len(e) for e in equation_strings_arr])
-LSTM_size = 40
+#========Compute and print important information for the next steps========
 
-print('working on %s examples' % N_total)
-print('    number of equation elements : %s' % N_vocab)
-print('    maximum equation length     : %s' % N_steps)
-print('    length of feature vector    : %s' % N_feature)
-print('    size of LSTM states         : %s' % LSTM_size)
-
-# turn the equation into a one-hot representation
-def eq_string_one_hot(eq_string):
-    one_hot_list = []
-    for i in range(N_steps):
-        one_hot = np.zeros((N_vocab,1))
-        if i < len(eq_string):
-            s = eq_string[i]
-            one_hot[eq_dict[s],0] = 1
-        else:
-            s = '<eoe>'
-            one_hot[eq_dict[s],0] = 1            
-        one_hot_list.append(one_hot)
-    return one_hot_list
-
-def one_hot_to_eq_str(one_hot_list):
-    one_hot_list = one_hot_list[0]  # need to get 0th element since only one training example in practice
-    N = len(one_hot_list)
-    equation = ''
-    for i in range(N):
-        prediction = np.argmax(one_hot_list[i])
-        eq_el = reverse_dict[prediction]
-        equation += eq_el
-    return equation
-
-def eq_tree_to_one_hot(eq_tree):
-    one_hot_list = []
-    def recurse(node):
-        one_hot = np.zeros((N_vocab,1))
-        s = node.name
-        one_hot[eq_dict[s],0] = 1
-        one_hot_list.append(one_hot)
-        if node.eq_class == 'op':
-            recurse(node.nextL)
-            recurse(node.nextR)
-        elif node.eq_class == 'fn':
-            recurse(node.nextR)        
-    recurse(eq_tree.head)
-    L = len(one_hot_list)
-    for i in range(N_steps-L):
-        one_hot = np.zeros((N_vocab,1))
-        one_hot[eq_dict['<eoe>'],0] = 1
-        one_hot_list.append(one_hot)
-    return one_hot_list
-
+"""
 def compute_max_depth(trees):
     def recurse(node,depth):
         if node == None:
@@ -97,11 +72,67 @@ def compute_max_depth(trees):
             max_depth = depth
     return max_depth
 
-# turn the equation into a one-hot representation and reshape for TF
-features = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_arr]
+depth_buffer = 0
+max_depth = compute_max_depth(equation_trees_full) + depth_buffer
+"""
+depth_buffer = 0
+num_elements = sum([2**i for i in range(max_depth)])
+N_feature = len(feature_vector_full[0])
+N_vocab = len(eq_dict)
+N_train = len(equation_strings_train)
+N_test = len(equation_strings_test)
+N_steps = num_elements
+LSTM_size = 20
+
+print('working on %s total examples' % N_total)
+print('    number of training examples : %s' % N_train)
+print('    number of test examples     : %s' % N_test)
+print('    considering a max depth of  : %s' % (max_depth + depth_buffer))
+print('    number of equation elements : %s' % N_vocab)
+print('    maximum # equation elements : %s' % N_steps)
+print('    length of feature vector    : %s' % N_feature)
+print('    size of LSTM states         : %s' % LSTM_size)
+
+#========Get one-hot representations and prep data for training========
+
+def eq_tree_to_one_hot(eq_tree, depth):
+    one_hot_list = []
+    def recurse(node,depth):
+        if depth > 0:
+            one_hot = np.zeros((N_vocab,1))
+            if node is None:
+                node = Node()
+                one_hot[eq_dict['<eoe>'],0] = 1
+                node.name = '<eoe>'
+                node.eq_class = 'const'
+            else:
+                s = node.name
+                one_hot[eq_dict[s],0] = 1                
+            one_hot_list.append(one_hot)
+            node.one_hot = one_hot
+            if node is None:
+                recurse(None,depth-1)
+                recurse(None,depth-1)                
+            elif node.eq_class == 'op':
+                recurse(node.nextL,depth-1)
+                recurse(node.nextR,depth-1)
+            elif node.eq_class == 'fn':
+                recurse(node.nextR,depth-1)
+                recurse(None,depth-1)
+            else:
+                recurse(None,depth-1)
+                recurse(None,depth-1)  
+    recurse(eq_tree.head, depth)
+    return one_hot_list
+
+features_train = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_train]
+features_test = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_test]
 features_full = [np.reshape(np.array(f),(1,N_feature)) for f in feature_vector_full]
-eq_one_hot = [eq_tree_to_one_hot(eq_tree) for eq_tree in equation_trees_arr]
-eq_one_hot = [np.reshape(np.array(e),(1,N_steps,N_vocab)) for e in eq_one_hot]
+true_one_hot_train = [np.reshape(eq_tree_to_one_hot(eq_tree,max_depth),(1,-1,N_vocab)) for eq_tree in equation_trees_train]
+true_one_hot_test  = [np.reshape(eq_tree_to_one_hot(eq_tree,max_depth),(1,-1,N_vocab)) for eq_tree in equation_trees_test]
+true_one_hot_full  = [np.reshape(eq_tree_to_one_hot(eq_tree,max_depth),(1,-1,N_vocab)) for eq_tree in equation_trees_full]
+
+#========Define placeholders and variables for tensorflow graph========
 
 # input to the first LSTM cell (the feature vector)
 feature = tf.placeholder(tf.float32,[1,N_feature])
@@ -122,92 +153,70 @@ bi = tf.Variable(tf.zeros([LSTM_size,1]))
 # vector input weights and biases from feature vector to input
 Wf = tf.Variable(tf.random_normal([N_feature,N_vocab]))
 bf = tf.Variable(tf.zeros([1,N_vocab]))
+Wf2 = tf.Variable(tf.random_normal([N_vocab,N_vocab]))
+bf2 = tf.Variable(tf.zeros([N_vocab,1]))
 # define the basic lstm cell
 lstm_cell = tf.contrib.rnn.BasicLSTMCell(LSTM_size)
 
-def predict_train(input_to_LSTM, train_tree_node, init_state, out_list):
+#========Function to create the computational graph and compute loss========
+
+def predict_train(input_to_LSTM, out_list, init_state, depth):
     # reformat inputs to LSTM
     input_to_LSTM = tf.add(tf.matmul(Wi,input_to_LSTM),bi)
     input_to_LSTM = tf.reshape(input_to_LSTM,[1,1,LSTM_size])
     # get outputs and states
-    with tf.device('/cpu:0'):
-        out, state = tf.nn.dynamic_rnn(lstm_cell,input_to_LSTM,initial_state=init_state,dtype=tf.float32)
+    out, state = tf.nn.dynamic_rnn(lstm_cell,input_to_LSTM,initial_state=init_state,dtype=tf.float32)
     # get encoded outputs
     out = tf.reshape(out,[LSTM_size,-1])
     out = tf.add(tf.matmul(Wo,out),bo)
-    out = tf.nn.softmax(out,dim=0) 
-
+    #out = tf.nn.softmax(out,dim=0) 
     out_list.append(out)
-    # create new inputs to right and left LSTMS
-    out_R = tf.add(tf.matmul(Wo_R,out),bo_R)
-    out_R = tf.nn.softmax(out_R,dim=0)        
-    out_L = tf.add(tf.matmul(Wo_L,out),bo_L) 
-    out_L = tf.nn.softmax(out_L,dim=0)
+    if depth > 0:
+        # create new inputs to right and left LSTMS
+        out_R = tf.add(tf.matmul(Wo_R,out),bo_R)
+        out_L = tf.add(tf.matmul(Wo_L,out),bo_L) 
+        predict_train(out_L, out_list, state, depth-1)
+        predict_train(out_R, out_list, state, depth-1)
 
-    if train_tree_node.eq_class == 'op':
-        predict_train(out_L, train_tree_node.nextL, state, out_list)
-        predict_train(out_R, train_tree_node.nextR, state, out_list)
-    elif train_tree_node.eq_class == 'fn':
-        predict_train(out_R, train_tree_node.nextR, state, out_list)
-
-def predict_test(input_to_LSTM, init_state, node, depth):
+#========Function to predict an equation tree given a feature vector========
+def predict_test(input_to_LSTM, init_state, node, pred_out, depth):
     # reformat inputs to LSTM
     input_to_LSTM = tf.add(tf.matmul(Wi,input_to_LSTM),bi)
     input_to_LSTM = tf.reshape(input_to_LSTM,[1,1,LSTM_size])
     # get outputs and states
-    with tf.device('/cpu:0'):
-        out, state = tf.nn.dynamic_rnn(lstm_cell,input_to_LSTM,initial_state=init_state,dtype=tf.float32)
+    out, state = tf.nn.dynamic_rnn(lstm_cell,input_to_LSTM,initial_state=init_state,dtype=tf.float32)
     # get encoded outputs
     out = tf.reshape(out,[LSTM_size,-1])
     out = tf.add(tf.matmul(Wo,out),bo)
     out = tf.nn.softmax(out,dim=0) 
-
-    node.val = out
-    # create new inputs to right and left LSTMS
-    out_R = tf.add(tf.matmul(Wo_R,out),bo_R)
-    out_R = tf.nn.softmax(out_R,dim=0)        
-    out_L = tf.add(tf.matmul(Wo_L,out),bo_L) 
-    out_L = tf.nn.softmax(out_L,dim=0)
-
+    node.one_hot = out
+    pred_out.append(out)
     if depth > 0:
+        # create new inputs to right and left LSTMS
+        out_R = tf.add(tf.matmul(Wo_R,out),bo_R)
+        out_L = tf.add(tf.matmul(Wo_L,out),bo_L) 
         node.nextL = Node()
-        node.nextR = Node()        
-        predict_test(out_L, state, node.nextL, depth-1)
-        predict_test(out_R, state, node.nextR, depth-1)
+        node.nextR = Node()
+        predict_test(out_L, state, node.nextL, pred_out, depth-1)
+        predict_test(out_R, state, node.nextR, pred_out, depth-1)
 
+#========Define loss and optimizer========
 
-def loss_fn(m):
-    loss = tf.constant(0.0)
-    input_to_LSTM = tf.reshape(tf.add(tf.matmul(feature,Wf),bf),[N_vocab,1])
-    train_tree_node = equation_trees_arr[m]
-    out_list = []
-    predict_train(input_to_LSTM,train_tree_node.head,None,out_list)
-    # pad with <eoe> for remaining
-    for _ in range(N_steps-len(out_list)):
-        one_hot = np.zeros((N_vocab,1))
-        one_hot[eq_dict['<eoe>'],0] = 1
-        out_list.append(one_hot)
-    new_out_list = tf.reshape(out_list,[1,N_steps,N_vocab])
-    #loss = loss + tf.reduce_sum(tf.abs(tf.subtract(new_out_list,target)))
-    loss = loss + tf.reduce_sum(tf.square(tf.abs(tf.subtract(new_out_list,target))))    
-    return loss
+print("building computational graph...")
+loss = tf.constant(0.0)
+input_to_LSTM = tf.reshape(tf.add(tf.matmul(feature,Wf),bf),[N_vocab,1])
+#input_to_LSTM = tf.nn.relu(input_to_LSTM)
+#input_to_LSTM = tf.reshape(tf.add(tf.matmul(Wf2,input_to_LSTM),bf2),[N_vocab,1])
+#input_to_LSTM = tf.nn.sigmoid(input_to_LSTM)
 
-optimizer = tf.train.RMSPropOptimizer(learning_rate=0.001)
-def optimizer_fn(m):
-    return optimizer.minimize(loss_fn(m))
-
-loss_fns = []
-optimizer_fns = []
-print("")
-for i in range(N_train):
-    sys.stdout.write("\rsetting up tree for training example %s of %s..." % (i,N_train))
-    sys.stdout.flush()
-    loss_fns.append(loss_fn(i))
-    optimizer_fns.append(optimizer_fn(i))
-print("")
-
-N_epoch = 1000
-depth_buffer = 2
+predict_tree = EquationTree()
+out_list = []
+predict_train(input_to_LSTM, out_list, None, max_depth-1) 
+out_list = tf.reshape(out_list,[1,-1,N_vocab])  
+loss = tf.reduce_sum(tf.square(tf.abs(out_list-target)))
+#loss = tf.losses.softmax_cross_entropy(target,out_list)
+optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
+N_epoch = 300
 
 with tf.Session() as sess:
     print("")
@@ -216,16 +225,12 @@ with tf.Session() as sess:
     print("")
 
     losses = []
-    # TO DO: precompute LSTM trees separately (reuse parameters)
-    #        then train each epoch without needing to reconstruct tree for each training example each epoch
     for i in range(N_epoch):
         epoch_loss = 0.0
         for m in range(N_train):
-            loss_m = loss_fns[m]
-            opt_m = optimizer_fns[m]
-            _, loss_calc = sess.run([opt_m, loss_m], feed_dict={
-                                                    feature:features[m],
-                                                    target:eq_one_hot[m]})          
+            _, loss_calc = sess.run([optimizer, loss], feed_dict={
+                                                    feature:features_train[m],
+                                                    target:true_one_hot_train[m]})          
             epoch_loss += loss_calc
         if i == 0:
             print("first epoch_loss = %s" % epoch_loss)
@@ -234,48 +239,88 @@ with tf.Session() as sess:
         sys.stdout.flush()
 
     print("\n")
-
-    max_depth = compute_max_depth(equation_trees_arr) + depth_buffer
     print("predicting trees with max depth of %s..."%(max_depth-1))
     pred_list = []
-    matches = 0
+    matches_train = 0
+    matches_test = 0
+
+    input_to_LSTM = tf.reshape(tf.add(tf.matmul(feature,Wf),bf),[N_vocab,1])
+    eq_tree_predict = EquationTree()
+
+    pred_out = []
+    predict_test(input_to_LSTM, None, eq_tree_predict.head, pred_out, max_depth)
+
     for m in range(N_total):
+
         print("working on %sth test example..."%(m))
 
-        input_to_LSTM = tf.reshape(tf.add(tf.matmul(feature,Wf),bf),[N_vocab,1])
-        eq_tree_predict = EquationTree()
-        predict_test(input_to_LSTM, None, eq_tree_predict.head, max_depth)
+        predicted_one_hots = sess.run(pred_out,feed_dict={feature:features_full[m]})
 
-        def recurse_and_prune(node):
-            one_hot = node.val
-            predict = tf.argmax(one_hot)
-            index = sess.run(predict, feed_dict={feature:features_full[m]})
-            index = int(index)
+        def load_one_hots_into_tree(node, one_hots, index_list, depth):
+            index = index_list[0]
+            one_hot = one_hots[index]
+            node.one_hot = one_hot
+            if depth > 0:
+                node.nextL = Node()
+                node.nextR = Node()                
+                load_one_hots_into_tree(node.nextL, one_hots, [index_list[0]+1], depth-1)
+                load_one_hots_into_tree(node.nextR, one_hots, [index_list[0]+1], depth-1)
+
+        pred_tree = EquationTree()
+        load_one_hots_into_tree(pred_tree.head,predicted_one_hots,[0],max_depth-1)
+
+        def print_one_hot_tree(node):
+            if node is not None:
+                print(node.one_hot)
+                print_one_hot_tree(node.nextR)
+                print_one_hot_tree(node.nextL)
+        #uncomment for debugging
+        #print_one_hot_tree(pred_tree.head)
+        
+        def recurse_and_prune(node, depth):
+            one_hot = node.one_hot
+            predict = np.argmax(one_hot)
+            index = int(predict)
             symbol = reverse_dict[index]
             node.name = symbol
             eq_class = class_dict[symbol]
             node.eq_class = eq_class
-
-            if node.nextL is not None and node.nextR is not None:
+            if depth > 0:
                 if eq_class == 'op':
-                    recurse_and_prune(node.nextL)
-                    recurse_and_prune(node.nextR)
+                    recurse_and_prune(node.nextL, depth-1)
+                    recurse_and_prune(node.nextR, depth-1)
                 elif eq_class == 'fn':
-                    recurse_and_prune(node.nextR)
+                    recurse_and_prune(node.nextR, depth-1)
                     node.nextL = None
                 else:
                     node.nextR = None
                     node.nextL = None
 
-        recurse_and_prune(eq_tree_predict.head)
-        eq_string = eq_tree_predict.flatten()
+        recurse_and_prune(pred_tree.head, max_depth-1)
+
+        eq_string = pred_tree.flatten()
         eq_string = ''.join(eq_string)
+
         original_equation = ''.join(equation_strings_full[m][:-1])
         print("  original equation  : %s"%(original_equation))
         print("  predicted equation : %s"%(eq_string))
-        if eq_string == original_equation:
-            matches += 1
-    print("done.  Matched %s/%s equations for an accuracy of %s percent" % (matches,N_total,int(float(matches)/N_total*1000)/10))
+        if eq_string == original_equation and m < N_train:
+            matches_train += 1
+        if eq_string == original_equation and m >= N_train:
+            matches_test += 1            
+
+    print("done.")
+    print("Matched train = %s/%s equations for an accuracy of %s percent" % (matches_train,N_train,int(float(matches_train)/N_train*1000)/10))
+    print("Matched test = %s/%s equations for an accuracy of %s percent" % (matches_test,N_test,int(float(matches_test)/N_test*1000)/10))
+    print("Matched total = %s/%s equations for an accuracy of %s percent" % ((matches_train+matches_test),N_total,int(float(matches_train+matches_test)/N_total*1000)/10))
+
+    fname = './plot_data/tree_saveLosses_d'+str(max_depth-1)+'.txt'
+    losses_str = [str(l) for l in losses]
+    losses_str = ','.join(losses_str)
+
+    f = open(fname,'w')
+    f.write(losses_str)
+
     # save the model?
 
 

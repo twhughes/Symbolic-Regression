@@ -1,3 +1,11 @@
+'''
+Accelerating Symbolic Regression with Deep Learning
+By Tyler Hughes, Siddharth Buddhiraju and Rituraj
+For CS 221, Fall 2017-2018
+
+Helper functions for generating dataset
+'''
+
 import numpy as np
 from numpy.random import randint, random
 from equation_tree import *
@@ -10,49 +18,73 @@ def generate_random_tree(allowed, depth=3):
 
     # separate allowed dictionary into separate classes
     constants = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'const']
+    variables = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'var']
     functions = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'fn']
     operators = [(name,eq_class,anon_fn) for (name,eq_class,anon_fn) in allowed if eq_class == 'op']
 
-    def get_constant():
+    def get_constant(not_allowed):
         # returns a random constant
-        return constants[randint(len(constants))]
+        if not_allowed == 'const':
+            end_nodes = variables
+        else:
+            end_nodes = constants + variables
+        return end_nodes[randint(len(end_nodes))]
 
-    def get_obj():
+    def get_obj(not_allowed):
         # returns a random equation element
-        grouped = [constants, functions, operators]
+        if 'const' in not_allowed and 'var' in not_allowed:
+            grouped = [functions,operators]
+            group_pick = grouped[randint(2)]
+
+        elif not_allowed == 'const':
+                grouped = [variables, functions, operators]
+                group_pick = grouped[randint(3)]
+        else:
+            grouped = [variables, constants, functions, operators]
+            group_pick = grouped[randint(4)]
+
+        return group_pick[randint(len(group_pick))]
         # first samples randomly from constants, functions, and operators
-        group_pick = grouped[randint(3)]
         # then samples randomly from this class
         # this makes it so that adding a lot of one class does not bias the equations to have more elements from that class
-        return group_pick[randint(len(group_pick))]
+
 
     # recursive function to add a layer to the equation tree based on the class
-    def add_layer(node,depth):
+    def add_layer(node,depth,not_allowed):
         # if we're at the max depth, it must be a constant, because they have no children
         if depth == 0:
-            (name,eq_class,anon_fn) = get_constant()
-            eq_class = 'const'
+            (name,eq_class,anon_fn) = get_constant(not_allowed)
         # otherwise, it can be anything
         else:
-            name,eq_class,anon_fn = get_obj()
+            name,eq_class,anon_fn = get_obj(not_allowed)
         node.name = name
         node.eq_class = eq_class
         # if it's a function, add one child recursively
         if eq_class == 'fn':
             node.anon_fn = anon_fn
             node.nextR = Node()
-            add_layer(node.nextR,depth-1)
-        # if it's an operator, add two children recursively            
+            add_layer(node.nextR,depth-1,'const')
+        # if it's an operator, add two children recursively
         elif eq_class == 'op':
-            node.anon_fn = anon_fn            
+            node.anon_fn = anon_fn
             node.nextL = Node()
-            node.nextR = Node()            
-            add_layer(node.nextL,depth-1)
-            add_layer(node.nextR,depth-1)
+            node.nextR = Node()
+            class_1 = add_layer(node.nextL,depth-1,'const')
+            class_2 = add_layer(node.nextR,depth-1,'')
+
+            if class_1 in ['const','var'] and class_2 == 'fn':
+                node.nextL, node.nextR = node.nextR, node.nextL
+
+
+        return eq_class
 
     # get new equation tree object and recursively add layers to tree
     tree = EquationTree()
-    add_layer(tree.head, depth)
+    #add_layer(tree.head, depth,'') ##use this if only 'x' and 'c' are acceptable
+
+    add_layer(tree.head, depth,['const','var'])
+    # this disallows examples that are only 'x' or only 'c' to allow training
+    # on more complex examples.
     return tree
 
 def generate_example_list(tree,const_range,x_range,N_points):
@@ -75,10 +107,10 @@ def create_index_map(allowed):
     return index_map
 
 def operator_list_to_one_hot(operator_list,index_map):
-    # with a list of operators, generate one hot numpy array    
+    # with a list of operators, generate one hot numpy array
     N = len(index_map)
     M = len(operator_list)
-    one_hot = np.zeros((N,M))    
+    one_hot = np.zeros((N,M))
     for i in range(M):
         name = operator_list[i]
         index = index_map[name]
@@ -86,9 +118,9 @@ def operator_list_to_one_hot(operator_list,index_map):
     return one_hot
 
 def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5],x_range=[-5,5],N_points=100,
-                               layer_sizes=[1,10,10,1],activations=['tanh','tanh','sigmoid'], N_epochs=100,learning_rate=1,verbose=False,uniquify=True,lambda_reg=0.0):  
-    # function called by main to get all training examples at once 
-    # set up important elements                                
+                               layer_sizes=[1,10,10,1],activations=['tanh','tanh','sigmoid'], N_epochs=100,learning_rate=1,verbose=False,uniquify=True,lambda_reg=0.0):
+    # function called by main to get all training examples at once
+    # set up important elements
     input_features = []
     input_trees = []
     input_vectors = []
@@ -96,20 +128,20 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
     index_map = create_index_map(allowed)
     seen_equations = set()
     print("")
-    # loop through number of training examples desired                                
+    # loop through number of training examples desired
     for train_i in range(N_training):
         # generate a random equation and get tree
         tree = generate_random_tree(allowed, depth=tree_depth)
-        # get the corresponding operator name list     
+        # get the corresponding operator name list
         operator_list = tree.flatten()
-        # convert this to one hot representation   
+        # convert this to one hot representation
         eq_string = ''.join(operator_list)
-        sys.stdout.write("\rgenerating tree for equation: %s " % (eq_string))
-        sys.stdout.flush()            
+        sys.stdout.write("\r working on %s/%s: generating tree for equation: %s " % (train_i+1,N_training, eq_string))
+        sys.stdout.flush()
         one_hot = operator_list_to_one_hot(operator_list,index_map)
         # generate x,y points from the equation
         x_list, y_list = generate_example_list(tree,const_range,x_range,N_points)
-        # fit the NN to the x,y points and get the feature vector and loss        
+        # fit the NN to the x,y points and get the feature vector and loss
         phi,loss = feature_fit(x_list,y_list,layer_sizes,activations,N_epochs=N_epochs,learning_rate=learning_rate,lambda_reg=lambda_reg)
         # only add if equation is unique
         if uniquify:
@@ -118,7 +150,7 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
                 if verbose:
                     print(train_i,loss)
                 input_vectors.append(one_hot)
-                input_trees.append(tree)            
+                input_trees.append(tree)
                 losses.append(loss)
                 input_features.append(phi)
         else:
@@ -126,9 +158,9 @@ def generate_training_examples(N_training,allowed,tree_depth=6,const_range=[-5,5
             if verbose:
                 print(train_i,loss)
             input_vectors.append(one_hot)
-            input_trees.append(tree)            
+            input_trees.append(tree)
             losses.append(loss)
-            input_features.append(phi)            
+            input_features.append(phi)
     return input_features, input_vectors, input_trees, losses
 
 
@@ -150,15 +182,14 @@ def process_IO_for_keras(input_features,input_vectors,N_training,allowed):
     inputs = []
     for i in range(N_training):
         phi = np.reshape(np.array(input_features[i]),(L_feature,1))
-        #phi = np.zeros((L_feature,1))
         one_hots = resized_input_vectors[i]
         extra_needed = L_feature-L_eq_identifier
         padding = np.zeros((extra_needed,one_hots.shape[1]))
-        one_hots = np.concatenate((one_hots,padding),axis=0) 
+        one_hots = np.concatenate((one_hots,padding),axis=0)
         inputs.append(np.concatenate((phi,one_hots),axis=1).T)
     #inputs is a list of numpy arrays, [input dimension x number in sequence]
     input_x = L_max_eq+1       # input size dimension
-    input_y = L_feature    # number in sequence
+    input_y = L_feature        # number in sequence
 
     outputs = []
     for i in range(N_training):
@@ -168,11 +199,3 @@ def process_IO_for_keras(input_features,input_vectors,N_training,allowed):
         outputs.append(output_array)
 
     return np.array(inputs),np.array(outputs)
-
-
-
-
-
-
-
-

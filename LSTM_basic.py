@@ -1,3 +1,12 @@
+'''
+Accelerating Symbolic Regression with Deep Learning
+By Tyler Hughes, Siddharth Buddhiraju and Rituraj
+For CS 221, Fall 2017-2018
+
+This file does simple tests on LSTMs with one or two, user-defined
+datasets.  Used for debugging and testing generalization of the model.
+'''
+
 import numpy as np
 import tensorflow as tf
 import sys
@@ -54,7 +63,6 @@ bf = tf.Variable(tf.zeros([1,LSTM_size]))
 # define the basic lstm cell
 lstm_cell = tf.contrib.rnn.BasicLSTMCell(LSTM_size)
 def predict(feature, lstm_cell):
-    #print(feature)
     # first output from feeding the feature vector
     feature = tf.add(tf.matmul(feature,Wf),bf)
     out, _ = tf.contrib.rnn.static_rnn(lstm_cell,[feature], dtype=tf.float32)
@@ -62,7 +70,6 @@ def predict(feature, lstm_cell):
     out = tf.reshape(out,[LSTM_size,-1])
     out = tf.add(tf.matmul(Wo,out),bo)
     # apply softmax and get max entry
-#    out = tf.sigmoid(out)    
     out = tf.nn.softmax(out,dim=0)
     predict1 = tf.argmax(out)
     out_list = [out]
@@ -74,7 +81,6 @@ def predict(feature, lstm_cell):
         out = tf.reshape(out,[LSTM_size,-1])
         out = tf.add(tf.matmul(Wo,out),bo)
         # apply softmax and get max entry
- #       out = tf.sigmoid(out)
         out = tf.nn.softmax(out,dim=0)
         predict = tf.argmax(out)
         out_list.append(out)
@@ -93,11 +99,6 @@ def one_hot_to_eq_str(one_hot_list):
     return equation
 
 loss = tf.constant(0.0)
-#for i in range(N_train):    
-#    out_list = predict(feature, lstm_cell)
-#    true_out = np.array(get_one_hot(equation_strings_arr[i]))
-#    loss = loss + tf.reduce_sum(tf.abs(tf.subtract(out_list,true_out)))
-
 out_list = tf.reshape(predict(feature, lstm_cell),[1,N_steps,N_vocab])
 loss = loss + tf.reduce_sum(tf.square(tf.abs(tf.subtract(out_list,target))))
 
@@ -130,19 +131,3 @@ with tf.Session() as sess:
     test_prediction(0)
     test_prediction(1)
 
-    p = sess.run(out_list,feed_dict={feature:np.array([[1,1]])})
-    eq_pred = one_hot_to_eq_str(p)
-    #print("supplied feature vector for : %s" % (''.join(equation_strings_arr[index])))
-    print("predicted equation of       : %s" % (eq_pred))  
-      
-    #p = sess.run(out_list,feed_dict={feature:features[1]})   
-    #print(p) 
-    #print(one_hot_to_eq_str(p))
-    #print(reverse_dict)
-    #print(p[0])
-    #print(np.argmax(p[0]))
-    #sess.run(loss,feed_dict={feature:feature_array,target:eq_one_hot})
-
-
-#print(features)
-#print(eq_one_hot)
