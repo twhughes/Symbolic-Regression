@@ -17,7 +17,7 @@ import pickle
 from equation_tree import *
 
 #========Loading data from file========
-max_depth = 1
+max_depth = 2
 
 fname_phi = './data/encoded_states_d'+str(max_depth)+'.txt'
 fname_eq = './data/desired_equation_components_d'+str(max_depth)+'.txt'
@@ -275,7 +275,7 @@ with tf.Session() as sess:
                 print_one_hot_tree(node.nextR)
                 print_one_hot_tree(node.nextL)
         #uncomment for debugging
-        #print_one_hot_tree(pred_tree.head)
+        print_one_hot_tree(pred_tree.head)
         
         def recurse_and_prune(node, depth):
             one_hot = node.one_hot

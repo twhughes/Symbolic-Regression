@@ -15,7 +15,7 @@ import sys
 from data_loader import load_data
 
 #============Read examples from file ========================
-max_depth = 1
+max_depth = 2
 
 fname_phi = './data/encoded_states_d'+str(max_depth)+'.txt'
 fname_eq = './data/desired_equation_components_d'+str(max_depth)+'.txt'

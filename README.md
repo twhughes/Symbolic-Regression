@@ -1,6 +1,8 @@
 
 # Accelerating Symbolic Regression with Deep Learning
 
+by Tyler Hughes, Siddharth Buddhiraju, and Rituraj
+
 ## Introduction
 
 The goal of symbolic regression is to generate a function that describes a given set of datapoints.  This function can, generally, include undetermined constants that may be fit later.  Typical approaches to symbolic regression involve global optimization techniques based on genetic algorithms [1,2,3], that search a subset of the entire space of possible equations to find the best fit.  This approach is cumbersome and does not utilize any of the features or structure inherent in the original data.  

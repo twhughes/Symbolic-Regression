@@ -52,7 +52,7 @@ def generate_random_tree(allowed, depth=3):
     # recursive function to add a layer to the equation tree based on the class
     def add_layer(node,depth,not_allowed):
         # if we're at the max depth, it must be a constant, because they have no children
-        if depth == 0:
+        if depth == 1:
             (name,eq_class,anon_fn) = get_constant(not_allowed)
         # otherwise, it can be anything
         else:
