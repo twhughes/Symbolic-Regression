@@ -32,6 +32,10 @@ The files ```LSTM_basic.py```, ```LSTM_sequence.py```, and ```LSTM_tree.py``` ar
 
 These three files show both training and prediction statistics to the user.
 
+### Curve Fitting
+
+After generating the equations, we provide a file ```fitter.py``` for doing curve fitting to the original (x,y) data points.  This script contains an example, which fits when running the script.  The functions from this script can also be imported for post-processing.
+
 ## Dependencies
 
 - Python 2.7.10
