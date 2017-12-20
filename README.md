@@ -12,8 +12,7 @@ In this work, we approach symbolic as a modified machine translation problem, wh
 This work presents a fresh approach to the problem of symbolic regression and may allow for potential increases in predictive power, reliability, and speed compared to previous solutions.
 
 ## Paper
-This work was performed as the final project for [Stanford CS 221, Artificial Intelligence: Principles and Techniques](http://web.stanford.edu/class/cs221/).  The final writeup will be posted online and a link will be provided below.
-
+This work was performed as the final project for [Stanford CS 221, Artificial Intelligence: Principles and Techniques](http://web.stanford.edu/class/cs221/).  The final writeup is linked [here](https://web.stanford.edu/class/cs221/restricted/reports/twhughes/final.pdf).
 ## Code
 
 ### Generating the Dataset
