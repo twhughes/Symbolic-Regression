@@ -4,7 +4,26 @@ Tools for interacting with the Conquer pickleball app.
 
 ## Step 1: Capture API Traffic
 
-Since Conquer has no public API, you need to intercept the app's network traffic first.
+Two options — **Option A is easier** (no phone needed).
+
+### Option A: Portal Web Intercept (recommended)
+
+Conquer has an organizer portal at `portal.conquerapp.io/auth` that shares
+credentials with the mobile app. Playwright can intercept its API calls.
+
+```bash
+pip install playwright
+playwright install chromium
+python conquer/portal_intercept.py --email your@email.com --password yourpassword
+```
+
+A browser window opens, logs in, and captures all API traffic to `conquer_traffic.json`.
+
+---
+
+### Option B: Mobile App Traffic Interception (phone required)
+
+Since Conquer has no public API, you can also intercept the mobile app's network traffic.
 
 ### Install mitmproxy
 ```bash
